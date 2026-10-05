@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080a12">
+  <title>مكوّنات الكمبيوتر | تجربة تفاعلية</title>
+  <style>
+    :root { color-scheme: dark; --accent: #ffb45d; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; }
+    body { overflow: hidden; background: #080a12; color: #f4f5fb; font-family: Tahoma, Arial, sans-serif; }
+    #stage { position: fixed; inset: 0; overflow: hidden; isolation: isolate; background: #080a12; }
+    #stage:fullscreen { width: 100vw; height: 100vh; background: #080a12; }
+    .visual { position: absolute; inset: 0; overflow: hidden; }
+    .hero-photo {
+      position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center;
+      transform: translate3d(var(--px, 0), var(--py, 0), 0) scale(1.015);
+      transform-origin: var(--focus, 50% 50%);
+      transition: transform 950ms cubic-bezier(.2,.75,.2,1), clip-path 950ms cubic-bezier(.2,.75,.2,1), filter 600ms ease;
+      will-change: transform, clip-path; user-select: none; pointer-events: none;
+      filter: saturate(.92) contrast(1.04);
+    }
+    .shade { position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(90deg,rgba(6,9,16,.9) 0%,rgba(6,9,16,.62) 39%,rgba(6,9,16,.06) 72%),linear-gradient(0deg,rgba(6,9,16,.54),transparent 28%); transition: background .65s ease; }
+    .stage-copy { position: absolute; z-index: 3; top: 50%; left: clamp(24px,8vw,140px); width: min(500px,38vw); transform: translateY(-50%); transition: opacity .3s, transform .45s; }
+    .eyebrow { color: var(--accent); font-size: 13px; letter-spacing: .12em; margin-bottom: 20px; }
+    h1 { margin: 0 0 18px; font-size: clamp(40px,6vw,78px); line-height: 1.08; letter-spacing: -.04em; }
+    .intro { max-width: 480px; color: #bdc5d2; font-size: clamp(16px,1.8vw,20px); line-height: 1.85; }
+    .start-hint { display: inline-flex; align-items: center; gap: 10px; margin-top: 28px; padding: 11px 15px; border: 1px solid #ffffff33; border-radius: 99px; background: #07111bc7; color: #e9f6ff; font-size: 14px; }
+    .start-hint i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 15px var(--accent); }
+    .hotspots { position: absolute; inset: 0; z-index: 4; transition: opacity .3s; }
+    .hotspot { position: absolute; left: var(--x); top: var(--y); width: 48px; height: 48px; padding: 0; border: 1px solid #c4f4ff; border-radius: 50%; color: white; background: #06131dc7; box-shadow: 0 0 0 7px #65dfff20,0 0 25px var(--accent); cursor: pointer; transform: translate(-50%,-50%); animation: beacon 2.4s ease-in-out infinite; transition: background .2s, scale .2s; }
+    .hotspot::before { content: ''; position: absolute; inset: 12px; border: 1px solid #ffffffb0; border-radius: 50%; }
+    .hotspot::after { content: '+'; position: absolute; inset: 0; display: grid; place-items: center; font: 21px Arial,sans-serif; }
+    .hotspot span { position: absolute; top: 50%; left: calc(100% + 14px); transform: translateY(-50%); white-space: nowrap; padding: 8px 11px; border: 1px solid #ffffff2c; border-radius: 99px; background: #07111be8; color: white; font: 13px Tahoma,Arial,sans-serif; opacity: 0; visibility: hidden; transition: opacity .2s; }
+    .hotspot:hover, .hotspot:focus-visible { scale: 1.12; background: var(--accent); color: #081018; }
+    .hotspot:hover span, .hotspot:focus-visible span { opacity: 1; visibility: visible; }
+    @keyframes beacon { 50% { box-shadow: 0 0 0 13px #65dfff08,0 0 34px var(--accent); } }
+    .detail-backdrop { position: absolute; z-index: 5; inset: 0 auto 0 0; width: 49%; display: grid; align-items: center; padding: clamp(18px,4vw,64px); background: linear-gradient(90deg,#080a12 0%,#080a12f5 82%,#080a1280 100%); opacity: 0; visibility: hidden; transform: translateX(-18px); transition: opacity 420ms ease,transform 550ms cubic-bezier(.2,.75,.2,1),visibility 0s linear 550ms; }
+    .detail-backdrop.open { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
+    .detail-card { width: 100%; max-height: 88vh; overflow: auto; padding: clamp(4px,1vw,18px); scrollbar-width: thin; scrollbar-color: #536477 transparent; }
+    .detail-close { display: inline-flex; align-items: center; gap: 8px; padding: 9px 13px; border: 1px solid #ffffff32; border-radius: 99px; background: #ffffff0a; color: #eff8ff; font: 13px Tahoma,Arial,sans-serif; cursor: pointer; }
+    .detail-close:hover { border-color: var(--accent); background: #ffffff17; }
+    .detail-kicker { margin-top: 24px; color: var(--accent); font-size: 13px; letter-spacing: .12em; }
+    .detail-card h2 { margin: 11px 0 14px; font-size: clamp(30px,4vw,48px); line-height: 1.15; }
+    .detail-intro { margin: 0; color: #bdc7d4; font-size: clamp(15px,1.45vw,18px); line-height: 1.8; }
+    .parts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; margin: 22px 0 18px; }
+    .part { min-height: 84px; padding: 12px 13px; border: 1px solid #ffffff1d; border-radius: 13px; background: #ffffff08; opacity: 0; transform: translateY(9px); }
+    .detail-backdrop.open .part { animation: rise 420ms ease forwards; animation-delay: var(--delay,0ms); }
+    .part b { display: block; margin-bottom: 5px; color: var(--accent); font-size: 14px; }
+    .part span { display: block; color: #bbc5d2; font-size: 12px; line-height: 1.65; }
+    @keyframes rise { to { opacity: 1; transform: translateY(0); } }
+    .sources { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 15px; border-top: 1px solid #ffffff1a; }
+    .sources a { padding: 7px 10px; border: 1px solid #79dcf43d; border-radius: 99px; color: #d9f6ff; font-size: 11px; text-decoration: none; transition: background .2s; }
+    .sources a:hover { background: #69dcff20; }
+    .footer { position: absolute; z-index: 6; right: 28px; bottom: 22px; left: 28px; display: flex; justify-content: space-between; align-items: center; gap: 12px; pointer-events: none; color: #d3deea; font-size: 12px; }
+    .footer-note { padding: 9px 12px; border: 1px solid #ffffff20; border-radius: 99px; background: #07111bbd; }
+    .fullscreen { width: 42px; height: 42px; border: 1px solid #ffffff34; border-radius: 50%; background: #07111bd9; color: white; font-size: 18px; cursor: pointer; pointer-events: auto; }
+    .fullscreen:hover { border-color: var(--accent); }
+    .detail-open .stage-copy { opacity: 0; transform: translate(-18px,-50%); pointer-events: none; }
+    .detail-open .hotspots { opacity: 0; pointer-events: none; }
+    .detail-open .hero-photo { transform: translate3d(var(--shift-x,0),var(--shift-y,0),0) scale(1.48); clip-path: inset(0 0 0 48%); filter: saturate(1.06) contrast(1.08) drop-shadow(0 0 28px color-mix(in srgb,var(--accent),transparent 70%)); }
+    .detail-open .shade { background: linear-gradient(90deg,#080a12 0 47%,#080a1240 58%,transparent 88%),linear-gradient(0deg,#080a124a,transparent 25%); }
+    .detail-open .footer-note { opacity: 0; }
+    @media (max-width: 760px) {
+      .hero-photo { object-fit: cover; object-position: 65% center; }
+      .shade { background: linear-gradient(0deg,#080a12 8%,#080a12a8 55%,#080a1230 100%); }
+      .stage-copy { top: auto; bottom: 14vh; left: 7vw; width: 86vw; transform: none; }
+      h1 { font-size: clamp(38px,11vw,62px); }
+      .intro { max-width: 92%; font-size: 16px; }
+      .hotspot { width: 40px; height: 40px; }
+      .hotspot span { display: none; }
+      .detail-backdrop { inset: auto 0 0; width: 100%; height: 59%; padding: 15px 18px 22px; align-items: start; background: linear-gradient(0deg,#080a12 88%,#080a12df); transform: translateY(18px); }
+      .detail-card { max-height: 100%; padding: 0 2px; }
+      .detail-kicker { margin-top: 14px; }
+      .detail-card h2 { margin: 7px 0 8px; font-size: 30px; }
+      .detail-intro { font-size: 14px; line-height: 1.65; }
+      .parts { gap: 7px; margin: 13px 0; }
+      .part { min-height: 70px; padding: 9px; }
+      .part b { font-size: 12px; }
+      .part span { font-size: 11px; }
+      .sources { gap: 6px; padding-top: 10px; }
+      .sources a { font-size: 10px; }
+      .detail-open .hero-photo { transform: translate3d(0,2vh,0) scale(1.24); clip-path: inset(0 0 40% 0); }
+      .detail-open .shade { background: linear-gradient(0deg,#080a12 42%,#080a1244 72%,transparent); }
+      .footer { right: 13px; bottom: 12px; left: 13px; }
+      .detail-open .footer { opacity: .5; }
+      .footer-note { font-size: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *,*::before,*::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+<main id="stage" aria-label="استكشاف مكوّنات الكمبيوتر">
+  <div class="visual" aria-hidden="true">
+    <img class="hero-photo" id="heroPhoto" src="hardware-exploded-view.png" alt="">
+  </div>
+  <div class="shade"></div>
+
+  <header class="stage-copy">
+    <div class="eyebrow">مكوّنات الكمبيوتر · تجربة تفاعلية</div>
+    <h1>إيه اللي<br>بيخلّي الكمبيوتر يشتغل؟</h1>
+    <p class="intro">حرّك المؤشر فوق الصورة واضغط على أي مكوّن عشان تشوفه عن قرب وتعرف أجزاؤه.</p>
+    <div class="start-hint"><i></i> اختار مكوّن من الصورة</div>
+  </header>
+
+  <nav class="hotspots" aria-label="اختيار مكوّن">
+    <button class="hotspot" style="--x:53%;--y:26%" data-part="cpu" aria-label="شرح المعالج"><span>CPU · المعالج</span></button>
+    <button class="hotspot" style="--x:67%;--y:18%" data-part="ram" aria-label="شرح الذاكرة"><span>RAM · الذاكرة</span></button>
+    <button class="hotspot" style="--x:67%;--y:43%" data-part="ssd" aria-label="شرح وحدة التخزين"><span>SSD · التخزين</span></button>
+    <button class="hotspot" style="--x:86%;--y:43%" data-part="gpu" aria-label="شرح معالج الرسوميات"><span>GPU · الرسوميات</span></button>
+    <button class="hotspot" style="--x:59%;--y:70%" data-part="board" aria-label="شرح اللوحة الأم والطاقة"><span>اللوحة الأم والطاقة</span></button>
+  </nav>
+
+  <section class="detail-backdrop" id="detail" aria-live="polite" aria-hidden="true">
+    <article class="detail-card" role="dialog" aria-modal="true">
+      <button class="detail-close" id="closeDetail" type="button">← رجوع للصورة</button>
+      <div class="detail-kicker" id="detailKicker"></div>
+      <h2 id="detailTitle"></h2>
+      <p class="detail-intro" id="detailIntro"></p>
+      <div class="parts" id="parts"></div>
+      <div class="sources" id="sources"></div>
+    </article>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-note" id="footerNote">اضغط على نقطة مضيئة لاستكشاف المكوّن</div>
+    <button class="fullscreen" id="fullscreen" type="button" aria-label="ملء الشاشة" title="ملء الشاشة · F">⛶</button>
+  </footer>
+</main>
+<script>
+  // عدّل النصوص والمراجع من هذا الجزء فقط؛ لا حاجة لتغيير شكل الصفحة.
+  const DETAILS = {
+    cpu: {
+      name: 'CPU · المعالج',
+      intro: 'ينفّذ تعليمات البرامج ويجري الحسابات. الغطاء المعدني الظاهر يوزّع الحرارة؛ وأسفله شريحة السيليكون التي تضم الأنوية وذاكرة التخزين المؤقت.',
+      parts: [
+        ['الأنوية', 'تنفّذ التعليمات، وتساعد الأنوية المتعددة على إنجاز مهام بالتوازي.'],
+        ['Cache', 'ذاكرة صغيرة وسريعة تحفظ بيانات وتعليمات يحتاجها المعالج كثيرًا.'],
+        ['الغطاء الحراري', 'سطح معدني ينقل الحرارة من الشريحة إلى المبرّد.'],
+        ['مقبس المعالج', 'يوصل المعالج باللوحة الأم؛ ويجب توافق المقبس مع اللوحة.']
+      ],
+      focus: '53% 26%', shift: ['20vw', '19vh'], accent: '#56dcff',
+      refs: [['Intel: المعالج وRAM', 'https://www.intel.com/content/www/us/en/learn/what-is-ram-vs-processor.html'], ['Intel: حزم المعالج', 'https://www.intel.com/content/www/us/en/support/articles/000005670/processors.html']]
+    },
+    ram: {
+      name: 'RAM · ذاكرة الوصول العشوائي',
+      intro: 'مساحة عمل سريعة ومؤقتة تحتفظ بالبيانات التي تحتاجها البرامج الآن. محتوياتها تُفقد عند إطفاء الجهاز، وسعتها تؤثر في سلاسة تشغيل عدة مهام.',
+      parts: [
+        ['شرائح DRAM', 'خلايا الذاكرة التي تحتفظ بالبيانات مؤقتًا.'],
+        ['لوحة PCB', 'تثبت شرائح الذاكرة وتوصل الإشارات بينها وبين المتحكم.'],
+        ['موصلات ذهبية', 'تنقل الطاقة والإشارات بين الوحدة وشق الذاكرة.'],
+        ['SPD وPMIC', 'SPD يخزن معلومات الوحدة؛ ووحدات DDR5 تتضمن إدارة طاقة على الوحدة.']
+      ],
+      focus: '67% 18%', shift: ['9vw', '25vh'], accent: '#b98cff',
+      refs: [['Intel: RAM والمعالج', 'https://www.intel.com/content/www/us/en/learn/what-is-ram-vs-processor.html'], ['Kingston: وحدات DDR5', 'https://www.kingston.com/unitedkingdom/en/blog/pc-performance/ddr5-overview'], ['Kingston: SPD', 'https://www.kingston.com/en/memory/kingston-glossary']]
+    },
+    ssd: {
+      name: 'SSD · وحدة التخزين',
+      intro: 'تحفظ النظام والملفات حتى بعد إيقاف الكمبيوتر. في قرص NVMe الظاهر تُخزن البيانات في شرائح NAND، ويتولى المتحكم تنظيم القراءة والكتابة.',
+      parts: [
+        ['NAND Flash', 'شرائح تخزين تحتفظ بالبيانات من دون طاقة.'],
+        ['المتحكّم', 'يدير أوامر القراءة والكتابة وتنظيم البيانات وتصحيح الأخطاء.'],
+        ['DRAM / Cache', 'قد توجد لتسريع إدارة البيانات؛ ويختلف تصميمها حسب طراز القرص.'],
+        ['M.2 وPCIe', 'شكل التوصيل والواجهة؛ تستخدم أقراص NVMe مسارات PCIe.']
+      ],
+      focus: '67% 43%', shift: ['10vw', '3vh'], accent: '#70e6a5',
+      refs: [['Samsung: أجزاء SSD', 'https://semiconductor.samsung.com/support/tools-resources/dictionary/semiconductors-101-part-3-inner-workings-of-the-ssd/'], ['Intel: PCIe', 'https://www.intel.com/content/www/us/en/gaming/resources/what-is-pcie-4-and-why-does-it-matter.html']]
+    },
+    gpu: {
+      name: 'GPU · معالج الرسوميات',
+      intro: 'يعالج كثيرًا من العمليات المتشابهة بالتوازي، ما يجعله مناسبًا لبناء الصور والرسوم ثلاثية الأبعاد. بطاقة الرسوميات تضم أكثر من شريحة GPU وحدها.',
+      parts: [
+        ['شريحة GPU', 'تنفّذ عمليات الرسوم والحساب المتوازي.'],
+        ['VRAM', 'ذاكرة مخصصة للصور والبيانات التي تعالجها البطاقة.'],
+        ['المراوح والمشتت', 'تساعد على إخراج الحرارة والمحافظة على الأداء.'],
+        ['منفذ PCIe', 'يربط البطاقة باللوحة الأم لنقل البيانات.']
+      ],
+      focus: '86% 43%', shift: ['-11vw', '3vh'], accent: '#ff718b',
+      refs: [['NVIDIA: مقدمة عن GPU', 'https://docs.nvidia.com/cuda/archive/13.2.0/cuda-programming-guide/01-introduction/introduction.html'], ['NVIDIA: بنية GPU', 'https://docs.nvidia.com/deeplearning/performance/pdf/GPU-Performance-Background-User-Guide.pdf']]
+    },
+    board: {
+      name: 'اللوحة الأم والطاقة',
+      intro: 'اللوحة الأم تربط القطع وتوفر مسارات البيانات والتوصيلات. مزوّد الطاقة يحوّل كهرباء الحائط إلى مخارج تيار مستمر مناسبة لمكونات الكمبيوتر.',
+      parts: [
+        ['مقبس CPU وشقوق RAM', 'أماكن تركيب المعالج والذاكرة؛ والتوافق يعتمد على مواصفات اللوحة.'],
+        ['PCIe وM.2', 'واجهات لتوصيل بطاقة الرسوميات والأقراص وأجهزة التوسعة.'],
+        ['VRM ومكثفات', 'تنظّم الطاقة الواصلة إلى أجزاء اللوحة.'],
+        ['مزوّد الطاقة PSU', 'يرشح الدخل ويحوّله وينظّم مخارج التيار المستمر للمكونات.']
+      ],
+      focus: '59% 70%', shift: ['17vw', '-18vh'], accent: '#ffd766',
+      refs: [['Intel: تشريح اللوحة الأم', 'https://www.intel.com/content/www/us/en/gaming/resources/how-to-choose-a-motherboard.html'], ['Seasonic: تصميم مزوّد الطاقة', 'https://seasonic.com/insights/power-supply-design/']]
+    }
+  };
+
+  const stage = document.querySelector('#stage');
+  const photo = document.querySelector('#heroPhoto');
+  const detail = document.querySelector('#detail');
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function openDetail(key) {
+    const item = DETAILS[key];
+    if (!item) return;
+    document.documentElement.style.setProperty('--accent', item.accent);
+    stage.style.setProperty('--focus', item.focus);
+    stage.style.setProperty('--shift-x', item.shift[0]);
+    stage.style.setProperty('--shift-y', item.shift[1]);
+    photo.style.transform = '';
+    document.querySelector('#detailKicker').textContent = 'استكشف المكوّن · اضغط Esc للرجوع';
+    document.querySelector('#detailTitle').textContent = item.name;
+    document.querySelector('#detailIntro').textContent = item.intro;
+    document.querySelector('#parts').innerHTML = item.parts.map(([title, body], i) =>
+      `<div class="part" style="--delay:${reducedMotion ? 0 : i * 65}ms"><b>${title}</b><span>${body}</span></div>`
+    ).join('');
+    document.querySelector('#sources').innerHTML = item.refs.map(([label, url]) =>
+      `<a href="${url}" target="_blank" rel="noopener noreferrer">مرجع: ${label} ↗</a>`
+    ).join('');
+    stage.classList.add('detail-open');
+    detail.classList.add('open');
+    detail.setAttribute('aria-hidden', 'false');
+    document.querySelector('#closeDetail').focus({preventScroll: true});
+  }
+
+  function closeDetail() {
+    stage.classList.remove('detail-open');
+    detail.classList.remove('open');
+    detail.setAttribute('aria-hidden', 'true');
+  }
+
+  document.querySelectorAll('.hotspot').forEach(button => {
+    button.addEventListener('click', () => openDetail(button.dataset.part));
+  });
+  document.querySelector('#closeDetail').addEventListener('click', closeDetail);
+
+  const fullscreenButton = document.querySelector('#fullscreen');
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await stage.requestFullscreen();
+    } catch { /* بعض المتصفحات تمنع ملء الشاشة عند فتح الملف محليًا. */ }
+  }
+  fullscreenButton.addEventListener('click', toggleFullscreen);
+  document.addEventListener('fullscreenchange', () => {
+    fullscreenButton.setAttribute('aria-label', document.fullscreenElement ? 'الخروج من ملء الشاشة' : 'ملء الشاشة');
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && stage.classList.contains('detail-open')) closeDetail();
+    if (event.key.toLowerCase() === 'f') toggleFullscreen();
+  });
+
+  // Update parallax at most once per animation frame for a steady pointer response.
+  if (!reducedMotion && matchMedia('(pointer:fine)').matches) {
+    let frame = 0;
+    stage.addEventListener('pointermove', event => {
+      if (stage.classList.contains('detail-open') || frame) return;
+      frame = requestAnimationFrame(() => {
+        const x = (event.clientX / innerWidth - .5) * -8;
+        const y = (event.clientY / innerHeight - .5) * -6;
+        photo.style.setProperty('--px', `${x}px`);
+        photo.style.setProperty('--py', `${y}px`);
+        frame = 0;
+      });
+    }, {passive: true});
+    stage.addEventListener('pointerleave', () => {
+      photo.style.setProperty('--px', '0px');
+      photo.style.setProperty('--py', '0px');
+    }, {passive: true});
+  }
+</script>
+</body>
+</html>
+
